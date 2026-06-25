@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>Тетрис - группа 5201ФК</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+        }
+        .game-container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+        .game-board {
+            border: 4px solid #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+        .side-panel {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            min-width: 200px;
+        }
+        h1 {
+            margin: 0 0 20px 0;
+            text-align: center;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .score {
+            font-size: 1.5em;
+            margin: 10px 0;
+            text-align: center;
+        }
+        .controls {
+            margin-top: 20px;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+        .controls h3 {
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 1.1em;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: white;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="game" class="game-board" width="300" height="600"></canvas>
+        <div class="side-panel">
+            <h1>ТЕТРИС</h1>
+            <div class="score">Счёт: <span id="score">0</span></div>
+            <div class="score">Линии: <span id="lines">0</span></div>
+            <div class="score">Уровень: <span id="level">1</span></div>
+
+            <button onclick="resetGame()">Новая игра</button>
+
+            <div class="controls">
+                <h3>Управление:</h3>
+                ← → : движение<br>
+                ↑ : поворот<br>
+                ↓ : ускорение<br>
+                Пробел : пауза
+            </div>
+
+            <a href="1.html" class="back-link">← На главную</a>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const linesElement = document.getElementById('lines');
+        const levelElement = document.getElementById('level');
+
+        const COLS = 10;
+        const ROWS = 20;
+        const BLOCK_SIZE = 30;
+
+        // Фигуры тетриса
+        const PIECES = [
+            [Z, "red"],
+            [S, "green"],
+            [T, "purple"],
+            [O, "yellow"],
+            [L, "orange"],
+            [I, "cyan"],
+            [J, "blue"]
+        ];
+
+        function Z() {
+            return [
+                [1, 1, 0],
+                [0, 1, 1],
+                [0, 0, 0]
+            ];
+        }
+
+        function S() {
+            return [
+                [0, 1, 1],
+                [1, 1, 0],
+                [0, 0, 0]
+            ];
+        }
+
+        function T() {
+            return [
+                [0, 1, 0],
+                [1, 1, 1],
+                [0, 0, 0]
+            ];
+        }
+
+        function O() {
+            return [
+                [1, 1],
+                [1, 1]
+            ];
+        }
+
+        function L() {
+            return [
+                [0, 0, 1],
+                [1, 1, 1],
+                [0, 0, 0]
+            ];
+        }
+
+        function I() {
+            return [
+                [0, 0, 0, 0],
+                [1, 1, 1, 1],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ];
+        }
+
+        function J() {
+            return [
+                [1, 0, 0],
+                [1, 1, 1],
+                [0, 0, 0]
+            ];
+        }
+
+        // Игровое поле
+        let board = [];
+        for (let r = 0; r < ROWS; r++) {
+            board[r] = [];
+            for (let c = 0; c < COLS; c++) {
+                board[r][c] = 0;
+            }
+        }
+
+        let score = 0;
+        let lines = 0;
+        let level = 1;
+        let gameOver = false;
+        let isPaused = false;
+
+        // Текущая фигура
+        let piece = null;
+        let pieceColor = "";
+        let pieceX = 0;
+        let pieceY = 0;
+
+        function randomPiece() {
+            let randomIndex = Math.floor(Math.random() * PIECES.length);
+            piece = PIECES[randomIndex][0]();
+            pieceColor = PIECES[randomIndex][1];
+            pieceX = Math.floor(COLS / 2) - Math.floor(piece[0].length / 2);
+            pieceY = 0;
+
+            if (collision()) {
+                gameOver = true;
+                alert("Игра окончена! Ваш счёт: " + score);
+            }
+        }
+
+        function collision() {
+            for (let r = 0; r < piece.length; r++) {
+                for (let c = 0; c < piece[r].length; c++) {
+                    if (piece[r][c]) {
+                        let newX = pieceX + c;
+                        let newY = pieceY + r;
+
+                        if (newX < 0 || newX >= COLS || newY >= ROWS) {
+                            return true;
+                        }
+
+                        if (newY >= 0 && board[newY][newX]) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function merge() {
+            for (let r = 0; r < piece.length; r++) {
+                for (let c = 0; c < piece[r].length; c++) {
+                    if (piece[r][c]) {
+                        let boardY = pieceY + r;
+                        if (boardY >= 0) {
+                            board[boardY][pieceX + c] = pieceColor;
+                        }
+                    }
+                }
+            }
+        }
+
+        function rotate() {
+            let rotated = piece[0].map((_, i) =>
+                piece.map(row => row[i]).reverse()
+            );
+
+            let oldPiece = piece;
+            piece = rotated;
+
+            if (collision()) {
+                piece = oldPiece;
+            }
+        }
+
+        function clearLines() {
+            let linesCleared = 0;
+
+            for (let r = ROWS - 1; r >= 0; r--) {
+                let isFull = true;
+                for (let c = 0; c < COLS; c++) {
+                    if (!board[r][c]) {
+                        isFull = false;
+                        break;
+                    }
+                }
+
+                if (isFull) {
+                    board.splice(r, 1);
+                    board.unshift(Array(COLS).fill(0));
+                    linesCleared++;
+                    r++;
+                }
+            }
+
+            if (linesCleared > 0) {
+                lines += linesCleared;
+                score += linesCleared * 100 * level;
+                if (linesCleared === 4) {
+                    score += 400 * level; // Бонус за тетрис
+                }
+                level = Math.floor(lines / 10) + 1;
+                updateScore();
+            }
+        }
+
+        function updateScore() {
+            scoreElement.textContent = score;
+            linesElement.textContent = lines;
+            levelElement.textContent = level;
+        }
+
+        function draw() {
+            // Очистка canvas
+            ctx.fillStyle = "#111";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Рисуем сетку
+            ctx.strokeStyle = "#333";
+            ctx.lineWidth = 1;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    ctx.strokeRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                }
+            }
+
+            // Рисуем зафиксированные блоки
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (board[r][c]) {
+                        drawBlock(c, r, board[r][c]);
+                    }
+                }
+            }
+
+            // Рисуем текущую фигуру
+            if (piece) {
+                for (let r = 0; r < piece.length; r++) {
+                    for (let c = 0; c < piece[r].length; c++) {
+                        if (piece[r][c]) {
+                            drawBlock(pieceX + c, pieceY + r, pieceColor);
+                        }
+                    }
+                }
+            }
+
+            // Game Over
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 40px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
+            }
+
+            // Pause
+            if (isPaused && !gameOver) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 40px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("PAUSE", canvas.width / 2, canvas.height / 2);
+            }
+        }
+
+        function drawBlock(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+        }
+
+        function drop() {
+            if (gameOver || isPaused) return;
+
+            pieceY++;
+            if (collision()) {
+                pieceY--;
+                merge();
+                clearLines();
+                randomPiece();
+            }
+        }
+
+        function moveLeft() {
+            if (gameOver || isPaused) return;
+            pieceX--;
+            if (collision()) {
+                pieceX++;
+            }
+        }
+
+        function moveRight() {
+            if (gameOver || isPaused) return;
+            pieceX++;
+            if (collision()) {
+                pieceX--;
+            }
+        }
+
+        function hardDrop() {
+            if (gameOver || isPaused) return;
+            while (!collision()) {
+                pieceY++;
+            }
+            pieceY--;
+            merge();
+            clearLines();
+            randomPiece();
+        }
+
+        // Управление
+        document.addEventListener('keydown', function(e) {
+            if (e.keyCode === 37) { // Left
+                moveLeft();
+            } else if (e.keyCode === 39) { // Right
+                moveRight();
+            } else if (e.keyCode === 40) { // Down
+                drop();
+            } else if (e.keyCode === 38) { // Up
+                rotate();
+            } else if (e.keyCode === 32) { // Space
+                isPaused = !isPaused;
+            }
+        });
+
+        function resetGame() {
+            board = [];
+            for (let r = 0; r < ROWS; r++) {
+                board[r] = Array(COLS).fill(0);
+            }
+            score = 0;
+            lines = 0;
+            level = 1;
+            gameOver = false;
+            isPaused = false;
+            updateScore();
+            randomPiece();
+        }
+
+        // Игровой цикл
+        let lastTime = 0;
+        let dropCounter = 0;
+        let dropInterval = 1000;
+
+        function update(time = 0) {
+            const deltaTime = time - lastTime;
+            lastTime = time;
+
+            if (!isPaused && !gameOver) {
+                dropCounter += deltaTime;
+                dropInterval = Math.max(100, 1000 - (level - 1) * 100);
+
+                if (dropCounter > dropInterval) {
+                    drop();
+                    dropCounter = 0;
+                }
+            }
+
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        // Запуск игры
+        resetGame();
+        update();
+    </script>
+</body>
+</html>

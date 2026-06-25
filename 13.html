@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>Фото - группа 5201ФК</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        .controls {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+        }
+        .upload-btn, .save-token-btn {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background 0.3s;
+        }
+        .upload-btn:hover, .save-token-btn:hover {
+            background: #45a049;
+        }
+        .clear-btn {
+            background: #f44336;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background 0.3s;
+        }
+        .clear-btn:hover {
+            background: #da190b;
+        }
+        .token-input {
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            width: 300px;
+            font-size: 0.9em;
+        }
+        #fileInput {
+            display: none;
+        }
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .photo-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            transition: transform 0.3s;
+        }
+        .photo-card:hover {
+            transform: translateY(-5px);
+        }
+        .photo-card img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            cursor: pointer;
+            display: block;
+        }
+        .photo-info {
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .photo-name {
+            font-size: 0.9em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 70%;
+        }
+        .delete-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 12px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .delete-btn:hover {
+            background: #da190b;
+        }
+        .uploading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            grid-column: 1 / -1;
+        }
+        .empty-state .icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: rgba(76, 175, 80, 0.3);
+        }
+        .status.error {
+            background: rgba(244, 67, 54, 0.3);
+        }
+        .status.info {
+            background: rgba(33, 150, 243, 0.3);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 10px;
+        }
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 2.5em;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 30px;
+            color: white;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .warning {
+            background: rgba(255, 152, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📷 Фотогалерея</h1>
+        <p class="subtitle">Фото сохраняются в репозиторий GitHub</p>
+
+        <div class="warning">
+            ⚠️ <strong>Внимание:</strong> Для загрузки фото нужен токен GitHub.
+            видите токен 
+        </div>
+
+        <div class="controls">
+            <input type="password" class="token-input" id="tokenInput" placeholder="Вставьте GitHub Personal Access Token">
+            <button class="save-token-btn" onclick="saveToken()">💾 Сохранить токен</button>
+
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()" id="uploadBtn" disabled>
+                📤 Загрузить фото
+            </button>
+            <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFiles(this.files)">
+
+            <button class="clear-btn" onclick="clearAll()">
+                🗑️ Удалить все
+            </button>
+        </div>
+
+        <div id="status"></div>
+
+        <div class="gallery" id="gallery"></div>
+
+        <a href="index.html" class="back-link">← На главную</a>
+    </div>
+
+    <div class="modal" id="modal" onclick="closeModal()">
+        <button class="modal-close">&times;</button>
+        <img id="modalImg" src="" alt="">
+    </div>
+
+    <script>
+        // КОНФИГУРАЦИЯ - ИЗМЕНИТЕ НА СВОИ ДАННЫЕ
+        const GITHUB_USERNAME = 'gfthhgdetgjjgfd-stack'; // Ваш логин на GitHub
+        const REPO_NAME = 'gfthhgdetgjjgfd-stack.github.io'; // Имя репозитория
+        const PHOTOS_FOLDER = 'photos'; // Папка для фото в репозитории
+        const TOKEN_STORAGE_KEY = 'github_token_5201';
+
+        let githubToken = localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+        let photos = [];
+        let isUploading = false;
+
+        window.onload = function() {
+            if (githubToken) {
+                document.getElementById('tokenInput').value = githubToken;
+                document.getElementById('uploadBtn').disabled = false;
+                showStatus('Токен найден. Можно загружать фото!', 'success');
+                loadPhotosFromRepo();
+            } else {
+                showStatus('Введите GitHub Personal Access Token для загрузки фото', 'info');
+            }
+        };
+
+        function saveToken() {
+            const token = document.getElementById('tokenInput').value.trim();
+            if (!token) {
+                showStatus('Ошибка: введите токен!', 'error');
+                return;
+            }
+            githubToken = token;
+            localStorage.setItem(TOKEN_STORAGE_KEY, token);
+            document.getElementById('uploadBtn').disabled = false;
+            showStatus('Токен сохранён! Теперь можно загружать фото.', 'success');
+            loadPhotosFromRepo();
+        }
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status ' + type;
+            statusEl.textContent = message;
+        }
+
+        async function loadPhotosFromRepo() {
+            try {
+                showStatus('Загрузка списка фото...', 'info');
+
+                const response = await fetch(
+                    `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${PHOTOS_FOLDER}`,
+                    {
+                        headers: {
+                            'Authorization': `token ${githubToken}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+
+                if (response.status === 404) {
+                    photos = [];
+                    renderGallery();
+                    showStatus('Папка для фото не найдена. Загрузите первое фото!', 'info');
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Ошибка загрузки: ' + response.status);
+                }
+
+                const files = await response.json();
+                photos = files.filter(file =>
+                    file.type === 'file' &&
+                    /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name)
+                ).map(file => ({
+                    name: file.name,
+                    download_url: file.download_url,
+                    sha: file.sha,
+                    path: file.path
+                }));
+
+                renderGallery();
+                showStatus(`Загружено ${photos.length} фото`, 'success');
+
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('Ошибка загрузки фото: ' + error.message, 'error');
+            }
+        }
+
+        async function handleFiles(files) {
+            if (!githubToken) {
+                showStatus('Сначала сохраните токен GitHub!', 'error');
+                return;
+            }
+
+            if (!files || files.length === 0) return;
+
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.classList.add('uploading');
+
+            for (let file of files) {
+                await uploadFileToGitHub(file);
+            }
+
+            uploadBtn.classList.remove('uploading');
+            document.getElementById('fileInput').value = '';
+        }
+
+        async function uploadFileToGitHub(file) {
+            try {
+                showStatus(`Загрузка ${file.name}...`, 'info');
+
+                const base64 = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const base64Content = e.target.result.split(',')[1];
+                        resolve(base64Content);
+                    };
+                    reader.readAsDataURL(file);
+                });
+
+                const filePath = `${PHOTOS_FOLDER}/${file.name}`;
+
+                const response = await fetch(
+                    `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${filePath}`,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${githubToken}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: `Upload photo: ${file.name}`,
+                            content: base64,
+                            branch: 'main'
+                        })
+                    }
+                );
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || response.status);
+                }
+
+                showStatus(`✅ ${file.name} загружен!`, 'success');
+                await loadPhotosFromRepo();
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                showStatus(`❌ Ошибка загрузки ${file.name}: ${error.message}`, 'error');
+            }
+        }
+
+        async function deletePhoto(photo) {
+            if (!confirm(`Удалить фото "${photo.name}" из репозитория?`)) {
+                return;
+            }
+
+            try {
+                showStatus(`Удаление ${photo.name}...`, 'info');
+
+                const response = await fetch(
+                    `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${photo.path}`,
+                    {
+                        headers: {
+                            'Authorization': `token ${githubToken}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error('Не удалось получить информацию о файле');
+                }
+
+                const fileData = await response.json();
+
+                const deleteResponse = await fetch(
+                    `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${photo.path}`,
+                    {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `token ${githubToken}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: `Delete photo: ${photo.name}`,
+                            sha: fileData.sha,
+                            branch: 'main'
+                        })
+                    }
+                );
+
+                if (!deleteResponse.ok) {
+                    throw new Error('Ошибка при удалении');
+                }
+
+                showStatus(`✅ ${photo.name} удалён`, 'success');
+                await loadPhotosFromRepo();
+
+            } catch (error) {
+                showStatus(`❌ Ошибка удаления: ${error.message}`, 'error');
+            }
+        }
+
+        async function clearAll() {
+            if (photos.length === 0) {
+                showStatus('Галерея уже пуста!', 'info');
+                return;
+            }
+
+            if (!confirm(`Удалить ВСЕ фото (${photos.length} шт.) из репозитория?`)) {
+                return;
+            }
+
+            showStatus('Удаление всех фото...', 'info');
+
+            for (let photo of photos) {
+                await deletePhoto(photo);
+            }
+
+            showStatus('Все фото удалены!', 'success');
+        }
+
+        function renderGallery() {
+            const gallery = document.getElementById('gallery');
+
+            if (photos.length === 0) {
+                gallery.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <h2>Пока нет фотографий</h2>
+                        <p>Загрузите первое фото в репозиторий</p>
+                    </div>
+                `;
+                return;
+            }
+
+            gallery.innerHTML = photos.map(photo => `
+                <div class="photo-card">
+                    <img src="${photo.download_url}" alt="${photo.name}" onclick="openModal('${photo.download_url}')">
+                    <div class="photo-info">
+                        <span class="photo-name" title="${photo.name}">${photo.name}</span>
+                        <button class="delete-btn" onclick="deletePhoto(${JSON.stringify(photo).replace(/"/g, '&quot;')})">Удалить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openModal(src) {
+            document.getElementById('modalImg').src = src;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
